@@ -158,11 +158,18 @@ export async function getOffers(): Promise<Offer[]> {
 export async function createOffer(
   offer: Omit<Offer, "id" | "created_at" | "status">
 ) {
+  console.log("📤 إرسال العرض إلى Supabase:", offer);
+  
   const { data, error } = await supabase
     .from("offers")
     .insert([
       {
-        ...offer,
+        domainId: offer.domainId,
+        buyerName: offer.buyerName,
+        email: offer.email,
+        phone: offer.phone || null,
+        offerAmount: offer.offerAmount,
+        message: offer.message || null,
         status: "UNREAD",
       },
     ])
@@ -170,10 +177,14 @@ export async function createOffer(
     .single();
 
   if (error) {
-    console.error("createOffer error:", error);
+    console.error("❌ createOffer error:", error);
+    console.error("❌ الرسالة:", error.message);
+    console.error("❌ التفاصيل:", error.details);
+    console.error("❌ التلميح:", error.hint);
     return null;
   }
 
+  console.log("✅ تم إنشاء العرض بنجاح:", data);
   return data ?? null;
 }
 
