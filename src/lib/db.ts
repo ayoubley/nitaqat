@@ -155,40 +155,33 @@ export async function getOffers(): Promise<Offer[]> {
    CREATE OFFER
 ========================= */
 
-export async function createOffer(offer: any) {
-  console.log("📤 محاولة إرسال:", offer);
+export async function createOffer(offer: Partial<Offer>) {
+  console.log("📤 محاولة إرسال العرض:", offer);
   
-  try {
-    const response = await fetch(
-      "https://fvcgtdkohqmqykbiarme.supabase.co/rest/v1/offers",
+  const { data, error } = await supabase
+    .from("offers")
+    .insert([
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2d0ZGtvaHFtcXlrYmlhcm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzNTIxOCwiZXhwIjoyMDkzNDExMjE4fQ.jsvmC1swET4bR7nwpa9BSWNAcHCqMeMMZ0evCKVepwo",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2d0ZGtvaHFtcXlrYmlhcm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzNTIxOCwiZXhwIjoyMDkzNDExMjE4fQ.jsvmC1swET4bR7nwpa9BSWNAcHCqMeMMZ0evCKVepwo",
-          "Prefer": "return=representation"
-        },
-        body: JSON.stringify({
-          domainId: offer.domainId || '',
-          buyerName: offer.buyerName || '',
-          email: offer.email || '',
-          phone: offer.phone || '',
-          offerAmount: Number(offer.offerAmount) || 0,
-          message: offer.message || '',
-          status: 'UNREAD'
-        })
+        domainId: offer.domainId,
+        buyerName: offer.buyerName,
+        email: offer.email,
+        phone: offer.phone || null,
+        offerAmount: Number(offer.offerAmount) || 0,
+        message: offer.message || null,
+        status: 'UNREAD' // أو 'pending' حسب ما تستخدمه
       }
-    );
+    ])
+    .select()
+    .single();
 
-    const data = await response.json();
-    console.log("✅ استجابة:", data);
-    return data;
-  } catch (err) {
-    console.error("❌ خطأ:", err);
+  if (error) {
+    console.error("❌ خطأ أثناء حفظ العرض:", error.message);
     return null;
   }
-}  
+
+  console.log("✅ تم الحفظ بنجاح:", data);
+  return data;
+}
 
 /* =========================
    UPDATE OFFER STATUS
