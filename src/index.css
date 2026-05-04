@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #ffffff;
+  --color-bg-2: #f7fafa;
+  --color-cyan: #91eff2;
+  --color-cyan-deep: #5bc9cc;
+  --color-cyan-darker: #2ab0b4;
+  --color-navy: #0a1a3a;
+  --color-text: #1a1a2e;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-gold: #d4af37;
+  --color-gold-2: #f5d27a;
+  --color-emerald: #10b981;
+}
+
+@theme {
+  --font-sans: "Tajawal", "Cairo", system-ui, sans-serif;
+  --font-display: "Cairo", "Tajawal", serif;
+  --color-ink: #0a0a0a;
+  --color-ink-2: #111111;
+  --color-gold: #d4af37;
+  --color-gold-soft: #f5d27a;
+  --color-emerald-glow: #10b981;
+}
+
+html, body, #root {
+  height: 100%;
+  background: #ffffff;
+  color: #1a1a2e;
+  font-family: "Tajawal", "Cairo", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f0f0f0; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #91eff2, #5bc9cc);
+  border-radius: 999px;
+  border: 2px solid #f0f0f0;
+}
+::-webkit-scrollbar-thumb:hover { background: #5bc9cc; }
+
+/* Selection */
+::selection { background: rgba(145,239,242,0.4); color: #0a1a3a; }
+
+/* Utilities */
+.gold-text {
+  background: linear-gradient(135deg, #f5d27a 0%, #d4af37 40%, #b8860b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.cyan-text {
+  background: linear-gradient(135deg, #91eff2 0%, #2ab0b4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.gold-border {
+  position: relative;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, rgba(145,239,242,0.8), rgba(145,239,242,0.1) 50%, rgba(91,201,204,0.5)) border-box;
+  border: 1px solid transparent;
+}
+
+.luxury-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  transition: all .35s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.luxury-card:hover {
+  border-color: rgba(145,239,242,0.6);
+  box-shadow: 0 20px 60px -20px rgba(145,239,242,0.35), 0 0 0 1px rgba(145,239,242,0.2) inset;
+  transform: translateY(-2px);
+}
+
+/* Dark theme cards for admin / details */
+.dark-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  border: 1px solid #1f1f1f;
+  transition: all .35s ease;
+}
+.dark-card:hover {
+  border-color: rgba(212,175,55,0.4);
+  box-shadow: 0 20px 60px -20px rgba(212,175,55,0.25), 0 0 0 1px rgba(212,175,55,0.15) inset;
+  transform: translateY(-2px);
+}
+
+.shimmer {
+  background: linear-gradient(110deg, transparent 30%, rgba(145,239,242,0.25) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, #f5d27a 0%, #d4af37 50%, #b8860b 100%);
+  color: #0a0a0a;
+  font-weight: 700;
+  transition: all .25s ease;
+  box-shadow: 0 10px 30px -10px rgba(212,175,55,0.5);
+}
+.btn-gold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 40px -10px rgba(212,175,55,0.7);
+  filter: brightness(1.05);
+}
+
+.btn-cyan {
+  background: linear-gradient(135deg, #91eff2 0%, #5bc9cc 50%, #2ab0b4 100%);
+  color: #0a1a3a;
+  font-weight: 700;
+  transition: all .25s ease;
+  box-shadow: 0 10px 30px -10px rgba(145,239,242,0.5);
+}
+.btn-cyan:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 40px -10px rgba(145,239,242,0.7);
+  filter: brightness(1.03);
+}
+
+.btn-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  font-weight: 700;
+  transition: all .25s ease;
+  box-shadow: 0 10px 30px -10px rgba(16,185,129,0.5);
+}
+.btn-emerald:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 40px -10px rgba(16,185,129,0.7);
+  filter: brightness(1.05);
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid #e5e7eb;
+  color: #1a1a2e;
+  transition: all .25s ease;
+}
+.btn-ghost:hover {
+  border-color: rgba(145,239,242,0.6);
+  background: rgba(145,239,242,0.08);
+}
+
+.btn-dark {
+  background: #0a1a3a;
+  color: #ffffff;
+  font-weight: 700;
+  transition: all .25s ease;
+}
+.btn-dark:hover {
+  background: #112240;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px -10px rgba(10,26,58,0.4);
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+.section-title-line::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #91eff2, transparent);
+  margin-top: 12px;
+  border-radius: 99px;
+}
+
+/* Domain name display */
+.domain-display {
+  font-family: "Playfair Display", "Cairo", serif;
+  letter-spacing: -0.02em;
+}
+
+/* NameClub-style glow - top */
+.hero-glow-top {
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1200px;
+  height: 700px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(145,239,242,0.35) 0%,
+    rgba(145,239,242,0.15) 30%,
+    rgba(91,201,204,0.05) 60%,
+    transparent 80%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* NameClub-style glow - bottom */
+.hero-glow-bottom {
+  position: absolute;
+  bottom: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1200px;
+  height: 700px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(145,239,242,0.30) 0%,
+    rgba(145,239,242,0.12) 35%,
+    rgba(91,201,204,0.04) 60%,
+    transparent 80%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Form input for light mode */
+.form-input-light {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #1a1a2e;
+  outline: none;
+  transition: border-color .2s;
+}
+.form-input-light:focus { border-color: #91eff2; box-shadow: 0 0 0 3px rgba(145,239,242,0.15); }
+
+/* Dark mode pages (admin, domain details) */
+.dark-page {
+  background: #0a0a0a;
+  color: #f5f5f4;
+}
+.dark-page .form-input {
+  width: 100%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid #262626;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #fff;
+  outline: none;
+  transition: border-color .2s;
+}
+.dark-page .form-input:focus { border-color: rgba(212,175,55,0.5); }

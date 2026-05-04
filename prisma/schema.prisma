@@ -1,0 +1,70 @@
+// Prisma schema for the Premium Arabic Domain Boutique
+// Use with PostgreSQL. Connection string via DATABASE_URL env.
+//
+// Run:
+//   npx prisma migrate dev --name init
+//   npx prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DomainStatus {
+  AVAILABLE
+  PENDING
+  SOLD
+}
+
+enum OfferStatus {
+  UNREAD
+  READ
+  REJECTED
+  ACCEPTED
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  domains   Domain[]
+}
+
+model Domain {
+  id          String       @id @default(cuid())
+  name        String       // e.g. "aqar"
+  tld         String       // e.g. ".com"
+  description String?
+  price       Int?         // null => "Make Offer"
+  views       Int          @default(0)
+  status      DomainStatus @default(AVAILABLE)
+  categoryId  String
+  category    Category     @relation(fields: [categoryId], references: [id])
+  offers      Offer[]
+  createdAt   DateTime     @default(now())
+
+  @@unique([name, tld])
+}
+
+model Offer {
+  id          String      @id @default(cuid())
+  domainId    String
+  domain      Domain      @relation(fields: [domainId], references: [id])
+  buyerName   String
+  email       String
+  phone       String?
+  offerAmount Int
+  message     String?
+  status      OfferStatus @default(UNREAD)
+  createdAt   DateTime    @default(now())
+}
+
+model Admin {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+}
