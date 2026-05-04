@@ -26,9 +26,11 @@ export interface Offer {
   domainId: string;
   buyerName: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   offerAmount: number;
-  message?: string;
-  status: OfferStatus;
-  createdAt: string;
+  message?: string | null;
+  status: string;
+  created_at: string;
+  // أضف هذا السطر الجديد 👇
+  domain?: { name: string }; 
 }

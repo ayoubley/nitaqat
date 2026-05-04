@@ -13,7 +13,7 @@ import {
 import type { Domain, Offer, OfferStatus, Category } from "../lib/types";
 import Modal from "../components/Modal";
 
-const ADMIN_PASS = "ayoub147896301";
+const ADMIN_PASS = import.meta.env.VITE_ADMIN_PASSWORD;
 const STORAGE_AUTH = "nitaqat:admin:auth";
 
 export default function Admin() {
@@ -540,7 +540,7 @@ function OffersAdmin() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="text-xs text-white/30 mb-1">
-                      {new Date(o.createdAt).toLocaleString("ar-EG")}
+                      {new Date(o.created_at).toLocaleString("ar-EG")}
                     </div>
                     <div className="font-bold text-lg text-white">{o.buyerName}</div>
                     <div className="text-sm text-white/50">{o.email} {o.phone && `• ${o.phone}`}</div>
