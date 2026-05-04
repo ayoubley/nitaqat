@@ -158,34 +158,31 @@ export async function getOffers(): Promise<Offer[]> {
 export async function createOffer(
   offer: Omit<Offer, "id" | "created_at" | "status">
 ) {
-  console.log("📤 إرسال العرض إلى Supabase:", offer);
+  console.log("📤 إرسال العرض:", offer);
   
   const { data, error } = await supabase
     .from("offers")
     .insert([
       {
-        domainId: offer.domainId,
-        buyerName: offer.buyerName,
-        email: offer.email,
-        phone: offer.phone || null,
-        offerAmount: offer.offerAmount,
-        message: offer.message || null,
-        status: "UNREAD",
+        domainId: offer.domainId || '',
+        buyerName: offer.buyerName || '',
+        email: offer.email || '',
+        phone: offer.phone || '',
+        offerAmount: Number(offer.offerAmount) || 0,
+        message: offer.message || '',
+        status: 'UNREAD',
       },
     ])
     .select()
     .single();
 
   if (error) {
-    console.error("❌ createOffer error:", error);
-    console.error("❌ الرسالة:", error.message);
-    console.error("❌ التفاصيل:", error.details);
-    console.error("❌ التلميح:", error.hint);
+    console.error("❌ createOffer error:", JSON.stringify(error));
     return null;
   }
 
-  console.log("✅ تم إنشاء العرض بنجاح:", data);
-  return data ?? null;
+  console.log("✅ تم:", data);
+  return data;
 }
 
 /* =========================
