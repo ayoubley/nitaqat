@@ -155,35 +155,40 @@ export async function getOffers(): Promise<Offer[]> {
    CREATE OFFER
 ========================= */
 
-export async function createOffer(
-  offer: Omit<Offer, "id" | "created_at" | "status">
-) {
-  console.log("📤 إرسال العرض:", offer);
+export async function createOffer(offer: any) {
+  console.log("📤 محاولة إرسال:", offer);
   
-  const { data, error } = await supabase
-    .from("offers")
-    .insert([
+  try {
+    const response = await fetch(
+      "https://fvcgtdkohqmqykbiarme.supabase.co/rest/v1/offers",
       {
-        domainId: offer.domainId || '',
-        buyerName: offer.buyerName || '',
-        email: offer.email || '',
-        phone: offer.phone || '',
-        offerAmount: Number(offer.offerAmount) || 0,
-        message: offer.message || '',
-        status: 'UNREAD',
-      },
-    ])
-    .select()
-    .single();
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2d0ZGtvaHFtcXlrYmlhcm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzNTIxOCwiZXhwIjoyMDkzNDExMjE4fQ.jsvmC1swET4bR7nwpa9BSWNAcHCqMeMMZ0evCKVepwo",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2d0ZGtvaHFtcXlrYmlhcm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzNTIxOCwiZXhwIjoyMDkzNDExMjE4fQ.jsvmC1swET4bR7nwpa9BSWNAcHCqMeMMZ0evCKVepwo",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify({
+          domainId: offer.domainId || '',
+          buyerName: offer.buyerName || '',
+          email: offer.email || '',
+          phone: offer.phone || '',
+          offerAmount: Number(offer.offerAmount) || 0,
+          message: offer.message || '',
+          status: 'UNREAD'
+        })
+      }
+    );
 
-  if (error) {
-    console.error("❌ createOffer error:", JSON.stringify(error));
+    const data = await response.json();
+    console.log("✅ استجابة:", data);
+    return data;
+  } catch (err) {
+    console.error("❌ خطأ:", err);
     return null;
   }
-
-  console.log("✅ تم:", data);
-  return data;
-}
+}  
 
 /* =========================
    UPDATE OFFER STATUS
