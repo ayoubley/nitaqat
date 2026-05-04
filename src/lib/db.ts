@@ -226,9 +226,8 @@ export async function deleteOffer(id: string) {
 ========================= */
 
 export const SITE_CONFIG = {
-  whatsappNumber: "0658970680",
+  whatsappNumber: "213658970680",
   brandName: "نِطاقات",
   brandNameEn: "Nitaqat",
-  email: "ayoubm3lomat2019@gmail.com
-",
+  email: "ayoubm3lomat2019@gmail.com"
 };
