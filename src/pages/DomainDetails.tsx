@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   SITE_CONFIG,
@@ -9,96 +9,46 @@ import {
   getDomains,
   incrementViews,
 } from "../lib/db";
+import { isFavorite, toggleFavorite } from "../lib/favorites";
 import Modal from "../components/Modal";
 import DomainCard from "../components/DomainCard";
-import { toggleFavorite, isFavorite } from "../lib/favorites";
-import type { Domain, Category } from "../lib/types";
 
 export default function DomainDetails() {
   const { slug = "" } = useParams();
-  const navigate = useNavigate();
-  const [domain, setDomain] = useState<Domain | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [allDomains, setAllDomains] = useState<Domain[]>([]);
-  const [loading, setLoading] = useState(true);
+  const domain = useMemo(() => getDomainBySlug(slug), [slug]);
+  const categories = useMemo(() => getCategories(), []);
+  const allDomains = useMemo(() => getDomains(), []);
   const [openOffer, setOpenOffer] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [favorited, setFavorited] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [fav, setFav] = useState(domain ? isFavorite(domain.id) : false);
 
   useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        const [cats, domains] = await Promise.all([
-          getCategories(),
-          getDomains(),
-        ]);
-
-        // البحث عن النطاق بمقارنة name+tld مع slug
-        const d = domains.find((dom) => `${dom.name}${dom.tld}` === slug) || null;
-        setDomain(d);
-        setCategories(cats || []);
-        setAllDomains(domains || []);
-        
-        if (d) {
-          incrementViews(d.id);
-          setFavorited(isFavorite(d.id));
-        }
-      } catch (err) {
-        console.error("❌ خطأ في تحميل النطاق:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    if (slug) incrementViews(slug);
   }, [slug]);
 
-  function handleToggleFav() {
-    if (!domain) return;
-    toggleFavorite(domain.id);
-    setFavorited(!favorited);
-  }
+  useEffect(() => {
+    if (domain) setFav(isFavorite(domain.id));
+  }, [domain]);
 
-  // شاشة التحميل
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-5 py-32 text-center">
-        <div className="animate-spin w-12 h-12 border-4 border-[#4a9d93] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-500">جاري تحميل النطاق...</p>
-      </div>
-    );
-  }
-
-  // النطاق غير موجود - عرض صفحة 404 مع زر للعودة للرئيسية
   if (!domain) {
     return (
       <div className="max-w-2xl mx-auto px-5 py-32 text-center">
-        <div className="text-6xl mb-4">🔍</div>
+        <div className="text-5xl mb-4">✦</div>
         <h1 className="text-3xl font-black text-[#1a2422]">النطاق غير موجود</h1>
-        <p className="text-[#3d4947] mt-3">
-          عذراً، النطاق الذي تبحث عنه غير متوفر أو تمت إزالته.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-          <Link 
-            to="/" 
-            className="bg-[#4a9d93] text-white px-6 py-3 rounded-full text-sm font-semibold hover:bg-[#226962] transition"
-          >
-            العودة إلى الرئيسية
-          </Link>
-          <Link 
-            to="/domains" 
-            className="border border-[#e4dfd2] bg-[#fbfaf6] text-[#1a2422] px-6 py-3 rounded-full text-sm font-semibold hover:border-[#4a9d93] transition"
-          >
-            استعراض جميع النطاقات
-          </Link>
-        </div>
+        <p className="text-[#6b7572] mt-3">النطاق الذي تبحث عنه غير متوفر أو تمت إزالته.</p>
+        <Link to="/domains" className="btn-cyan inline-block mt-6 px-6 py-3 rounded-full text-sm">
+          عرض كل النطاقات
+        </Link>
       </div>
     );
   }
 
   const fullDomain = `${domain.name}${domain.tld}`;
   const category = categories.find((c) => c.id === domain.categoryId);
-  const isMakeOffer = domain.price === null || domain.price === undefined;
+  const displayPrice = domain.price ?? 30000;
+  const monthly = Math.max(249, Math.ceil(displayPrice / 36));
+  const isMakeOffer = domain.price === null;
 
   const whatsappLink = `https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${encodeURIComponent(
     `مرحباً، أنا مهتم بشراء النطاق ${fullDomain}. هل يمكننا التحدث؟`
@@ -108,196 +58,298 @@ export default function DomainDetails() {
     .filter((d) => d.id !== domain.id && d.categoryId === domain.categoryId && d.status === "AVAILABLE")
     .slice(0, 3);
 
+  function handleFavorite() {
+    if (!domain) return;
+    const next = toggleFavorite(domain.id);
+    setFav(next);
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  function handleInlineOffer(e: React.FormEvent) {
+    e.preventDefault();
+    setOpenOffer(true);
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-5 lg:px-8 py-10 md:py-16">
-      {/* Breadcrumb */}
-      <nav className="text-xs text-[#6b7572] mb-8 flex items-center gap-2">
-        <Link to="/" className="hover:text-[#4a9d93] transition">الرئيسية</Link>
-        <span>›</span>
-        <Link to="/domains" className="hover:text-[#4a9d93] transition">النطاقات</Link>
-        <span>›</span>
-        <span className="text-[#1a2422] font-semibold">{fullDomain}</span>
-      </nav>
+    <div>
+      {/* ===== HERO LANDING SECTION — Warm Editorial ===== */}
+      <section className="relative overflow-hidden bg-[#f6f4ee]">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-48 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-[#2f8279]/8 blur-[130px]" />
+          <div className="absolute top-24 -right-28 h-[420px] w-[420px] rounded-full bg-[#d4a76a]/10 blur-[120px]" />
+          <div className="absolute bottom-0 -left-24 h-[440px] w-[440px] rounded-full bg-[#4a9d93]/8 blur-[120px]" />
+        </div>
 
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10">
-        {/* Hero panel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl p-8 md:p-14 overflow-hidden bg-[#fbfaf6] border border-[#e4dfd2] shadow-xl"
-        >
-          {/* Background glows - updated to warm teal */}
-          <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-[#4a9d93]/10 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-[#4a9d93]/8 blur-3xl pointer-events-none" />
-
-          <div className="relative">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] tracking-[0.3em] uppercase text-[#4a9d93] font-semibold">
-                  Premium Listing
-                </span>
-                {category && (
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#f6f4ee] text-[#3d4947] border border-[#e4dfd2]">
-                    {category.name}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={handleToggleFav}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
-                  favorited 
-                    ? "bg-gradient-to-br from-[#4a9d93] to-[#226962] text-white shadow-lg" 
-                    : "bg-[#fbfaf6] border border-[#e4dfd2] text-[#6b7572] hover:text-[#a6553a] hover:border-[#a6553a]"
-                }`}
-                title={favorited ? "إزالة من المفضلة" : "إضافة للمفضلة"}
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill={favorited ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-baseline gap-2">
-              <h1 className="domain-display text-6xl md:text-8xl lg:text-9xl font-black text-[#1a2422] leading-none">
-                {domain.name}
-              </h1>
-              <span className="domain-display text-4xl md:text-6xl text-[#4a9d93] font-light">
-                {domain.tld}
+        <div className="relative max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-14">
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Link to="/" className="inline-flex items-center gap-3 text-[#1a2422] hover:text-[#2f8279]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2f8279] to-[#4a9d93] font-black text-white shadow-lg shadow-[#2f8279]/20">
+                ن
               </span>
-            </div>
+              <span>
+                <span className="block text-2xl font-black leading-none">نِطاقات</span>
+                <span className="block text-[10px] uppercase tracking-[0.35em] text-[#6b7572]">Premium Broker</span>
+              </span>
+            </Link>
 
-            {domain.arabicName && (
-              <p className="mt-5 text-2xl text-[#6b7572] font-light">
-                {domain.arabicName}
-              </p>
-            )}
-
-            <p className="mt-8 text-[#3d4947] leading-9 text-lg max-w-2xl">
-              {domain.description || "نطاق مميز في سوق النطاقات العربية الفاخرة، فرصة مثالية لعلامتك التجارية."}
-            </p>
-
-            {/* Properties */}
-            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { l: "الطول", v: `${domain.name.length} أحرف` },
-                { l: "الامتداد", v: domain.tld },
-                { l: "المشاهدات", v: (domain.views ?? 0).toLocaleString("ar-EG") },
-                { l: "الحالة", v: "متاح" },
-              ].map((p) => (
-                <div key={p.l} className="bg-[#fbfaf6] border border-[#ece8da] rounded-xl p-4">
-                  <div className="text-[10px] uppercase tracking-widest text-[#6b7572]">{p.l}</div>
-                  <div className="mt-1 font-bold text-[#1a2422]">{p.v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Action panel */}
-        <motion.aside
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-6"
-        >
-          <div className="bg-[#fbfaf6] border border-[#e4dfd2] rounded-3xl p-8">
-            <div className="text-xs uppercase tracking-widest text-[#6b7572]">السعر المعلن</div>
-            {isMakeOffer ? (
-              <div className="mt-2">
-                <div className="text-3xl font-black text-[#4a9d93]">قدّم عرضك</div>
-                <p className="text-[#6b7572] text-sm mt-2">
-                  هذا النطاق متاح بنظام تقديم العروض. ابدأ بعرضك الأفضل.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-2">
-                <div className="text-5xl font-black text-[#1a2422]">
-                  ${(domain.price ?? 0).toLocaleString("en-US")}
-                </div>
-                <p className="text-[#6b7572] text-sm mt-2">
-                  بالدولار الأمريكي — قابل للتفاوض
-                </p>
-              </div>
-            )}
-
-            <div className="mt-6 space-y-3">
-              <button
-                onClick={() => setOpenOffer(true)}
-                className="w-full py-4 rounded-2xl text-base flex items-center justify-center gap-2 bg-gradient-to-l from-[#4a9d93] to-[#226962] text-white font-semibold hover:brightness-105 transition shadow-md"
-              >
-                <span>قدّم عرضاً</span>
-                <span>←</span>
-              </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link to="/domains" className="rounded-full border border-[#e4dfd2] bg-[#fbfaf6] px-4 py-2 text-xs text-[#6b7572] hover:bg-[#efece3]">
+                العودة للكتالوج
+              </Link>
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-4 rounded-2xl text-base flex items-center justify-center gap-2 bg-[#2f8279] text-white font-semibold hover:bg-[#226962] transition shadow-md"
+                className="inline-flex items-center gap-3 rounded-2xl bg-[#fbfaf6] px-5 py-3 ring-1 ring-[#e4dfd2] hover:bg-[#efece3]"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                تواصل عبر واتساب
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2f8279] to-[#4a9d93] shadow-lg shadow-[#2f8279]/20">
+                  <PhoneIcon />
+                </span>
+                <span className="text-right">
+                  <span className="block text-xs font-bold text-[#1a2422]">تواصل مع خبراء النطاقات</span>
+                  <span className="block text-[11px] text-[#6b7572]">واتساب أو اتصال مباشر</span>
+                </span>
               </a>
             </div>
+          </div>
 
-            {/* Trust badge */}
-            <div className="mt-6 pt-6 border-t border-[#ece8da]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#4a9d93]/10 border border-[#4a9d93]/30 flex items-center justify-center text-[#4a9d93]">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="M9 12l2 2 4-4"/>
-                  </svg>
-                </div>
+          <div className="grid gap-3 lg:grid-cols-[260px_1fr_320px]" dir="ltr">
+            {/* ✅ تم تعديل هذا القسم - إزالة صورة الشخص واستبدالها بمحتوى نصي */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative min-h-[310px] overflow-hidden rounded-2xl border border-[#e4dfd2] bg-gradient-to-br from-[#fbfaf6] to-[#efece3] p-6 shadow-xl shadow-[#1a2422]/5"
+              dir="rtl"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(47,130,121,0.08),transparent_45%)]" />
+              <div className="relative flex h-full flex-col justify-between">
                 <div>
-                  <div className="font-bold text-sm text-[#1a2422]">معاملات آمنة عبر Escrow.com</div>
-                  <div className="text-xs text-[#6b7572]">
-                    حماية كاملة للمشتري والبائع
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2f8279] to-[#4a9d93] text-white shadow-lg shadow-[#2f8279]/20">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2a10 10 0 0 0-10 10c0 7 10 13 10 13s10-6 10-13a10 10 0 0 0-10-10z" />
+                      <circle cx="12" cy="9" r="2" />
+                      <path d="M12 22v-4" />
+                    </svg>
                   </div>
+                  <h3 className="mt-4 text-lg font-bold text-[#1a2422]">استشارة مجانية</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#6b7572]">
+                    فريقنا متخصص في النطاقات العربية ويقدم استشارة كاملة حول قيمة النطاق وجدوى الاستثمار.
+                  </p>
                 </div>
+                <div className="mt-6 rounded-xl bg-[#eaf4f1] p-4 ring-1 ring-[#dceeea]">
+                  <p className="text-xs font-bold text-[#1a2422]">✓ تقييم احترافي</p>
+                  <p className="mt-1 text-xs text-[#6b7572]">تحليل السوق وتقدير القيمة السوقية</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="relative min-h-[310px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#2f8279] via-[#226962] to-[#18524d] p-6 md:p-8 shadow-xl shadow-[#2f8279]/15"
+              dir="rtl"
+            >
+              <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-white/8 blur-3xl" />
+              <div className="absolute -bottom-28 right-8 h-64 w-64 rounded-full bg-[#4a9d93]/15 blur-3xl" />
+              <div className="relative flex h-full flex-col justify-between">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">هذا النطاق معروض للبيع</span>
+                  {category && (
+                    <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/85">
+                      {category.name}
+                    </span>
+                  )}
+                </div>
+
+                <div className="py-8">
+                  {domain.arabicName && <p className="mb-3 text-xl font-light text-white/70">{domain.arabicName}</p>}
+                  <h1 className="domain-display break-words text-6xl font-black leading-none tracking-tight text-white md:text-7xl xl:text-8xl" dir="ltr">
+                    {fullDomain}
+                  </h1>
+                </div>
+
+                <p className="max-w-2xl text-sm leading-7 text-white/78 md:text-base">
+                  {domain.description}
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.aside
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+              className="grid gap-3"
+              dir="rtl"
+            >
+              <div className="rounded-2xl bg-gradient-to-br from-[#fbfaf6] to-[#efece3] p-5 shadow-lg shadow-[#1a2422]/5 border border-[#e4dfd2]">
+                <div className="text-sm font-semibold text-[#1a2422]">الدفع على دفعات</div>
+                <div className="mt-4 flex items-end gap-1">
+                  <span className="text-5xl font-black tracking-tight text-[#1a2422]">${monthly.toLocaleString("en-US")}</span>
+                  <span className="mb-2 text-sm font-bold text-[#6b7572]">/ شهرياً</span>
+                </div>
+                <button onClick={() => setOpenOffer(true)} className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#2f8279] to-[#4a9d93] px-5 py-3 text-sm font-black text-white hover:from-[#226962] hover:to-[#2f8279] transition shadow-lg shadow-[#2f8279]/20">
+                  تابع الطلب ↗
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-gradient-to-br from-[#fbfaf6] to-[#eaf4f1] p-4 border border-[#e4dfd2]">
+                  <p className="text-xs font-bold leading-5 text-[#6b7572]">احصل عليه الآن</p>
+                  <div className="mt-3 text-2xl font-black text-[#1a2422]">{isMakeOffer ? "عرض خاص" : `$${displayPrice.toLocaleString("en-US")}`}</div>
+                  <button onClick={() => setOpenOffer(true)} className="mt-4 text-sm font-black text-[#2f8279] hover:text-[#18524d]">
+                    {isMakeOffer ? "قدّم عرضاً" : "ابدأ الشراء"} ↗
+                  </button>
+                </div>
+
+                <form onSubmit={handleInlineOffer} className="rounded-2xl bg-gradient-to-br from-[#fbfaf6] to-[#eaf4f1] p-4 border border-[#e4dfd2]">
+                  <p className="text-xs font-bold text-[#6b7572]">قدّم عرضك</p>
+                  <input
+                    value={offerAmount}
+                    onChange={(e) => setOfferAmount(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="USD"
+                    className="mt-5 w-full rounded-xl border border-[#e4dfd2] bg-white px-3 py-2 text-xs text-[#1a2422] outline-none placeholder:text-[#6b7572] focus:border-[#2f8279]"
+                  />
+                  <button className="mt-4 text-sm font-black text-[#2f8279] hover:text-[#18524d]">متابعة ↗</button>
+                </form>
+              </div>
+            </motion.aside>
+          </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { title: "شراء بثقة", desc: "حماية المشتري عبر Escrow.com", icon: <CartIcon /> },
+              { title: "نقل فوري", desc: "إرشاد كامل حتى الاستلام", icon: <TransferIcon /> },
+              { title: "تبادل آمن", desc: "توثيق الصفقة وخطوات الدفع", icon: <ShieldIcon /> },
+              { title: "خيارات دفع مرنة", desc: "عرض، تفاوض، أو دفعات", icon: <WalletIcon /> },
+            ].map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="text-center"
+              >
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2f8279] to-[#4a9d93] text-white shadow-lg shadow-[#2f8279]/20">
+                  {item.icon}
+                </div>
+                <h3 className="mt-4 text-base font-black text-[#1a2422]">{item.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-[#6b7572]">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-10 overflow-hidden rounded-2xl bg-[#fbfaf6] p-5 ring-1 ring-[#e4dfd2] shadow-lg shadow-[#1a2422]/5">
+            <div className="grid gap-5 lg:grid-cols-[170px_1fr]">
+              <div className="flex flex-col justify-center rounded-xl bg-[#eaf4f1] p-5 text-center ring-1 ring-[#dceeea]">
+                <span className="text-lg font-bold text-[#1a2422]">Excellent</span>
+                <span className="mt-2 text-2xl tracking-widest text-[#2f8279]">★★★★★</span>
+                <span className="mt-1 text-xs text-[#6b7572]">Trustpilot style score</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {[
+                  { name: "Khaled A.", text: "تجربة سريعة ومحترفة، تم نقل النطاق بدون تعقيدات." },
+                  { name: "Muna R.", text: "التفاوض كان واضحاً وآمناً، وخدمة الدعم ممتازة." },
+                  { name: "Faisal Group", text: "اختيار قوي لعلامتنا الجديدة، والأهم أن الصفقة موثقة." },
+                ].map((review) => (
+                  <div key={review.name} className="rounded-xl bg-[#fbfaf6] p-4 ring-1 ring-[#e4dfd2]">
+                    <div className="text-[#2f8279]">★★★★★</div>
+                    <p className="mt-2 text-xs leading-6 text-[#6b7572]">{review.text}</p>
+                    <p className="mt-3 text-[11px] font-bold text-[#6b7572]">{review.name}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Why this domain */}
-          <div className="bg-[#fbfaf6] border border-[#e4dfd2] rounded-3xl p-7">
-            <h3 className="font-bold text-lg text-[#1a2422] mb-4">لماذا هذا النطاق؟</h3>
-            <ul className="space-y-3 text-sm text-[#3d4947]">
-              <li className="flex gap-3">
-                <span className="text-[#4a9d93]">✦</span>
-                <span>كلمة عربية أصيلة سهلة النطق والتذكّر عالمياً.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[#4a9d93]">✦</span>
-                <span>قصير ({domain.name.length} أحرف) — مثالي للعلامات التجارية.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[#4a9d93]">✦</span>
-                <span>امتداد {domain.tld} موثوق ومعروف عالمياً.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[#4a9d93]">✦</span>
-                <span>قيمة استثمارية متنامية في سوق النطاقات العربية.</span>
-              </li>
-            </ul>
+      {/* ===== LOWER SECTION — Warm Editorial Light ===== */}
+      <section className="relative overflow-hidden py-16">
+        <div className="absolute -top-40 left-1/2 h-[420px] w-[900px] -translate-x-1/2 rounded-full bg-[#4a9d93]/8 blur-[120px]" />
+        <div className="relative max-w-7xl mx-auto px-5 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="luxury-card rounded-3xl p-7 md:p-9"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="text-[#4a9d93] text-xs tracking-[0.3em] uppercase mb-2 font-semibold">Domain Intelligence</div>
+                  <h2 className="text-3xl font-black text-[#1a2422]">لماذا {fullDomain}؟</h2>
+                </div>
+                <button
+                  onClick={handleFavorite}
+                  className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+                    fav ? "border-[#a6553a]/30 bg-[#a6553a]/10 text-[#a6553a]" : "border-[#e4dfd2] bg-[#fbfaf6] text-[#6b7572] hover:border-[#a6553a]/30 hover:text-[#a6553a]"
+                  }`}
+                >
+                  {fav ? "محفوظ في المفضلة ❤️" : "أضف للمفضلة ♡"}
+                </button>
+              </div>
+
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                {[
+                  { l: "الطول", v: `${domain.name.length} أحرف`, d: "اسم قصير وسهل الحفظ" },
+                  { l: "الامتداد", v: domain.tld, d: "امتداد موثوق للعلامات الجادة" },
+                  { l: "المشاهدات", v: domain.views.toLocaleString("ar-EG"), d: "اهتمام نشط من المشترين" },
+                  { l: "الحالة", v: "متاح الآن", d: "جاهز للتفاوض والنقل" },
+                ].map((item) => (
+                  <div key={item.l} className="rounded-2xl bg-[#efece3]/50 p-5 ring-1 ring-[#e4dfd2]">
+                    <p className="text-xs uppercase tracking-widest text-[#6b7572]">{item.l}</p>
+                    <p className="mt-2 text-2xl font-black text-[#1a2422]">{item.v}</p>
+                    <p className="mt-1 text-sm text-[#6b7572]">{item.d}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="rounded-3xl bg-gradient-to-br from-[#2f8279] via-[#226962] to-[#18524d] p-7 text-white shadow-2xl shadow-[#2f8279]/20 md:p-9"
+            >
+              <div className="text-[#4a9d93] text-xs tracking-[0.3em] uppercase mb-2 font-semibold">Secure Closing</div>
+              <h2 className="text-3xl font-black">مسار شراء آمن</h2>
+              <div className="mt-8 space-y-5">
+                {[
+                  "قدّم عرضك أو اطلب التواصل الفوري عبر واتساب.",
+                  "نؤكد الاتفاق ونفتح معاملة ضمان Escrow.com.",
+                  "بعد الدفع، يتم نقل النطاق لحسابك مع متابعة كاملة.",
+                ].map((step, i) => (
+                  <div key={step} className="flex gap-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4a9d93] to-[#2f8279] text-sm font-black text-white">
+                      {i + 1}
+                    </div>
+                    <p className="pt-1 text-sm leading-7 text-white/75">{step}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 rounded-2xl border border-[#4a9d93]/30 bg-[#4a9d93]/15 p-5">
+                <p className="font-black text-[#4a9d93]">Secure transactions via Escrow.com</p>
+                <p className="mt-2 text-sm leading-7 text-white/65">حماية كاملة للمشتري والبائع، وشفافية في الدفع ونقل الملكية.</p>
+              </div>
+            </motion.div>
           </div>
-        </motion.aside>
-      </div>
 
-      {/* Related */}
-      {related.length > 0 && (
-        <section className="mt-20">
-          <h2 className="text-2xl font-black text-[#1a2422] section-title-line mb-8">نطاقات مشابهة</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {related.map((d, i) => (
-              <DomainCard key={d.id} domain={d} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
+          {related.length > 0 && (
+            <section className="mt-16">
+              <h2 className="text-2xl font-black text-[#1a2422] section-title-line mb-8">نطاقات مشابهة</h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {related.map((d, i) => (
+                  <DomainCard key={d.id} domain={d} index={i} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </section>
 
-      {/* OFFER MODAL */}
       <Modal
         open={openOffer}
         onClose={() => {
@@ -308,25 +360,21 @@ export default function DomainDetails() {
       >
         {submitted ? (
           <div className="text-center py-6">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-3xl mb-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#eaf4f1] border border-[#2f8279]/30 flex items-center justify-center text-[#226962] text-3xl mb-4">
               ✓
             </div>
-            <p className="text-[#3d4947] leading-7">
+            <p className="text-[#6b7572] leading-7">
               شكراً لاهتمامك! سيقوم فريقنا بمراجعة عرضك والرد عليك خلال
-              <span className="text-[#4a9d93] font-bold"> 24 ساعة</span> على
-              البريد المُسجّل.
+              <span className="text-[#226962] font-bold"> 24 ساعة</span> على البريد المسجل.
             </p>
-            <button
-              onClick={() => { setOpenOffer(false); setTimeout(() => setSubmitted(false), 300); }}
-              className="bg-[#4a9d93] text-white mt-6 px-6 py-2.5 rounded-full text-sm hover:bg-[#226962] transition"
-            >
+            <button onClick={() => setOpenOffer(false)} className="btn-cyan mt-6 px-6 py-2.5 rounded-full text-sm">
               إغلاق
             </button>
           </div>
         ) : (
           <OfferForm
             domainId={domain.id}
-            suggestedAmount={domain.price ?? undefined}
+            suggestedAmount={offerAmount ? Number(offerAmount) : domain.price ?? undefined}
             onSubmitted={() => setSubmitted(true)}
           />
         )}
@@ -335,7 +383,6 @@ export default function DomainDetails() {
   );
 }
 
-// OfferForm and Field components remain the same
 function OfferForm({
   domainId,
   suggestedAmount,
@@ -352,12 +399,12 @@ function OfferForm({
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !email || !amount) return;
     setSubmitting(true);
-    try {
-      await createOffer({
+    setTimeout(() => {
+      createOffer({
         domainId,
         buyerName: name,
         email,
@@ -365,12 +412,9 @@ function OfferForm({
         offerAmount: Number(amount),
         message,
       });
-      onSubmitted();
-    } catch (err) {
-      console.error("❌ خطأ في إرسال العرض:", err);
-    } finally {
       setSubmitting(false);
-    }
+      onSubmitted();
+    }, 600);
   }
 
   return (
@@ -388,7 +432,7 @@ function OfferForm({
       </Field>
       <Field label="مبلغ العرض (USD) *">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4a9d93] text-sm font-bold">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2f8279] text-sm font-bold">$</span>
           <input
             required type="number" min={1} value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -400,15 +444,13 @@ function OfferForm({
         <textarea
           value={message} onChange={(e) => setMessage(e.target.value)}
           rows={3} className="form-input-light resize-none"
-          placeholder="حدّثنا عن مشروعك..."
+          placeholder="حدثنا عن مشروعك..."
         />
       </Field>
-      <button type="submit" disabled={submitting} className="bg-[#4a9d93] text-white w-full py-3.5 rounded-xl text-sm font-semibold hover:bg-[#226962] transition disabled:opacity-60">
-        {submitting ? "جارٍ الإرسال..." : "إرسال العرض"}
+      <button type="submit" disabled={submitting} className="btn-cyan w-full py-3.5 rounded-xl text-sm disabled:opacity-60">
+        {submitting ? "جار الإرسال..." : "إرسال العرض"}
       </button>
-      <p className="text-xs text-[#6b7572] text-center">
-        بإرسال هذا النموذج، أنت توافق على شروط الاستخدام وسياسة الخصوصية.
-      </p>
+      <p className="text-xs text-[#6b7572] text-center">بإرسال هذا النموذج، أنت توافق على شروط الاستخدام وسياسة الخصوصية.</p>
     </form>
   );
 }
@@ -419,5 +461,52 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-xs uppercase tracking-widest text-[#6b7572] mb-2">{label}</span>
       {children}
     </label>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.35 1.9.65 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.3 1.85.52 2.81.65A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 6h15l-1.5 9h-12z" />
+      <path d="M6 6 5 2H2" />
+      <circle cx="9" cy="20" r="1" />
+      <circle cx="18" cy="20" r="1" />
+    </svg>
+  );
+}
+
+function TransferIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+      <path d="M16 11h6v5h-6a2 2 0 0 1 0-4z" />
+      <path d="M18 7V5a2 2 0 0 0-2-2H6" />
+    </svg>
   );
 }
