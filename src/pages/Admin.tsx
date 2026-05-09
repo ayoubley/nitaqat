@@ -45,7 +45,6 @@ export default function Admin() {
           </button>
         </div>
 
-        {/* tabs - updated colors */}
         <div className="flex gap-2 border-b border-white/10 mb-8 overflow-x-auto">
           {[
             { k: "overview", l: "نظرة عامة" },
@@ -123,7 +122,6 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-// ✅ Overview مع async - updated colors
 function Overview() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -203,7 +201,7 @@ function Overview() {
                       <td className="p-4">
                         <div className="font-bold text-white">{o.buyerName}</div>
                         <div className="text-xs text-white/40">{o.email}</div>
-                       </td>
+                      </td>
                       <td className="p-4 domain-display text-white">{d ? `${d.name}${d.tld}` : "—"}</td>
                       <td className="p-4 text-[#4a9d93] font-bold">${o.offerAmount.toLocaleString("en-US")}</td>
                       <td className="p-4"><StatusBadge status={o.status} /></td>
@@ -219,7 +217,6 @@ function Overview() {
   );
 }
 
-// ✅ DomainsAdmin مع async - updated colors
 function DomainsAdmin() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [editing, setEditing] = useState<Domain | null>(null);
@@ -290,7 +287,6 @@ function DomainsAdmin() {
   );
 }
 
-// ✅ مكون منفصل للصف الواحد - updated colors
 function DomainRow({ domain, onEdit, onDelete }: { domain: Domain; onEdit: (d: Domain) => void; onDelete: () => void }) {
   const [cat, setCat] = useState<Category | null>(null);
 
@@ -308,7 +304,7 @@ function DomainRow({ domain, onEdit, onDelete }: { domain: Domain; onEdit: (d: D
           {domain.name}<span className="text-[#4a9d93]">{domain.tld}</span>
         </div>
         {domain.featured && <span className="text-[10px] text-[#4a9d93]">★ مميز</span>}
-       </td>
+      </td>
       <td className="p-4 text-white/50">{cat?.name ?? "—"}</td>
       <td className="p-4">
         {domain.price === null ? (
@@ -316,7 +312,7 @@ function DomainRow({ domain, onEdit, onDelete }: { domain: Domain; onEdit: (d: D
         ) : (
           <span className="text-[#4a9d93] font-bold">${domain.price.toLocaleString("en-US")}</span>
         )}
-       </td>
+      </td>
       <td className="p-4">
         <span className={`text-xs px-2 py-1 rounded-full border ${
           domain.status === "AVAILABLE"
@@ -327,7 +323,7 @@ function DomainRow({ domain, onEdit, onDelete }: { domain: Domain; onEdit: (d: D
         }`}>
           {domain.status === "AVAILABLE" ? "متاح" : domain.status === "PENDING" ? "قيد التفاوض" : "مباع"}
         </span>
-       </td>
+      </td>
       <td className="p-4 text-white/40">{domain.views}</td>
       <td className="p-4 text-left">
         <button onClick={() => onEdit(domain)} className="text-[#4a9d93] hover:underline text-xs ml-3">
@@ -344,12 +340,11 @@ function DomainRow({ domain, onEdit, onDelete }: { domain: Domain; onEdit: (d: D
         >
           حذف
         </button>
-       </td>
+      </td>
     </tr>
   );
 }
 
-// ✅ DomainForm مع async - updated colors
 function DomainForm({ initial, onDone }: { initial: Domain | null; onDone: () => void }) {
   const [cats, setCats] = useState<Category[]>([]);
   const [name, setName] = useState(initial?.name ?? "");
@@ -464,4 +459,147 @@ function DomainForm({ initial, onDone }: { initial: Domain | null; onDone: () =>
       </div>
       <label className="flex items-center gap-2 text-sm text-[#6b7572]">
         <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="accent-[#4a9d93]" />
-        عرض كنطاق مميّز في الصفح
+        عرض كنطاق مميّز في الصفحة الرئيسية
+      </label>
+      <button type="submit" className="btn-cyan w-full py-3 rounded-xl text-sm">
+        {initial ? "حفظ التعديلات" : "إضافة النطاق"}
+      </button>
+    </form>
+  );
+}
+
+function OffersAdmin() {
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [filter, setFilter] = useState<OfferStatus | "ALL">("ALL");
+  const [loading, setLoading] = useState(true);
+
+  async function refresh() {
+    const o = await getOffers();
+    setOffers(o || []);
+  }
+
+  useEffect(() => {
+    Promise.all([getOffers(), getDomains()]).then(([o, d]) => {
+      setOffers(o || []);
+      setDomains(d || []);
+      setLoading(false);
+      
+      o?.forEach((offer) => {
+        if (offer.status === "UNREAD") updateOfferStatus(offer.id, "READ");
+      });
+    });
+  }, []);
+
+  const filtered = filter === "ALL" ? offers : offers.filter((o) => o.status === filter);
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <div className="animate-spin w-12 h-12 border-4 border-[#4a9d93] border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-white/50">جاري تحميل العروض...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-5">
+        {(["ALL", "UNREAD", "READ", "ACCEPTED", "REJECTED"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`px-4 py-1.5 rounded-full text-xs border ${
+              filter === s ? "border-[#4a9d93]/50 bg-[#4a9d93]/10 text-[#4a9d93]" : "border-white/10 text-white/40 hover:border-white/20"
+            }`}
+          >
+            {labelFor(s)}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center text-white/40">
+          لا توجد عروض في هذه الفئة.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((o) => {
+            const d = domains.find((x) => x.id === o.domainId);
+            return (
+              <div key={o.id} className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs text-white/30 mb-1">
+                      {new Date(o.created_at).toLocaleString("ar-EG")}
+                    </div>
+                    <div className="font-bold text-lg text-white">{o.buyerName}</div>
+                    <div className="text-sm text-white/50">{o.email} {o.phone && `• ${o.phone}`}</div>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs text-white/30">على النطاق</div>
+                    <div className="domain-display font-bold text-white">
+                      {d ? `${d.name}${d.tld}` : "—"}
+                    </div>
+                    <div className="text-[#4a9d93] font-black text-xl mt-1">
+                      ${o.offerAmount.toLocaleString("en-US")}
+                    </div>
+                  </div>
+                </div>
+                {o.message && (
+                  <div className="mt-4 bg-white/5 border border-white/5 rounded-lg p-3 text-sm text-white/70 leading-7">
+                    {o.message}
+                  </div>
+                )}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <StatusBadge status={o.status} />
+                  <div className="flex gap-2">
+                    <button onClick={async () => { await updateOfferStatus(o.id, "ACCEPTED"); refresh(); }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+                      قبول
+                    </button>
+                    <button onClick={async () => { await updateOfferStatus(o.id, "REJECTED"); refresh(); }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500/10">
+                      رفض
+                    </button>
+                    <button onClick={async () => {
+                      if (confirm("حذف هذا العرض؟")) { await deleteOffer(o.id); refresh(); }
+                    }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/40 hover:bg-white/5">
+                      حذف
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: OfferStatus }) {
+  const map: Record<OfferStatus, string> = {
+    UNREAD: "border-yellow-500/30 text-yellow-300 bg-yellow-500/10",
+    READ: "border-white/10 text-white/50 bg-white/5",
+    ACCEPTED: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10",
+    REJECTED: "border-red-500/30 text-red-400 bg-red-500/10",
+  };
+  return (
+    <span className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${map[status]}`}>
+      {labelFor(status)}
+    </span>
+  );
+}
+
+function labelFor(s: string) {
+  switch (s) {
+    case "ALL": return "الكل";
+    case "UNREAD": return "جديد";
+    case "READ": return "مقروء";
+    case "ACCEPTED": return "مقبول";
+    case "REJECTED": return "مرفوض";
+    default: return s;
+  }
+}
