@@ -11,22 +11,35 @@ interface Props {
 }
 
 export default function DomainCard({ domain, index = 0, showFavorite = true }: Props) {
-  const slug = `${domain.name}${domain.tld}`;
+  // ✅ التحقق من وجود domain
+  if (!domain) {
+    console.warn("DomainCard received undefined domain");
+    return null;
+  }
+
+  const slug = `${domain.name || ""}${domain.tld || ""}`;
   const isMakeOffer = domain.price === null;
   const [favorited, setFavorited] = useState(false);
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
-    setFavorited(isFavorite(domain.id));
-  }, [domain.id]);
+    if (domain?.id) {
+      setFavorited(isFavorite(domain.id));
+    }
+  }, [domain]);
 
   function handleToggleFav(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!domain?.id) return;
     toggleFavorite(domain.id);
     setFavorited(!favorited);
     setRefresh((r) => r + 1);
   }
+
+  // ✅ عرض آمن للاسم والامتداد
+  const domainName = domain.name || "???";
+  const domainTld = domain.tld || ".com";
 
   return (
     <motion.div
@@ -66,14 +79,14 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
           </span>
         </div>
 
-        {/* ✅ DOMAIN NAME - FIXED: عرض النطاق بشكل صحيح name.tld */}
+        {/* ✅ DOMAIN NAME - عرض النطاق بشكل صحيح */}
         <div className="mb-4 text-center">
           <div className="flex items-baseline justify-center gap-1 flex-wrap">
             <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
-              {domain.name}
+              {domainName}
             </h3>
             <span className="domain-display text-2xl md:text-3xl text-[#4a9d93] font-light">
-              {domain.tld}
+              {domainTld}
             </span>
           </div>
           {domain.arabicName && (
@@ -108,7 +121,7 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
-              {domain.views.toLocaleString("ar-EG")}
+              {(domain.views ?? 0).toLocaleString("ar-EG")}
             </span>
           </div>
         </div>
