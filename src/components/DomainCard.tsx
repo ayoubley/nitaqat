@@ -12,12 +12,12 @@ interface Props {
 
 export default function DomainCard({ domain, index = 0, showFavorite = true }: Props) {
   // ✅ التحقق من وجود domain
-  if (!domain) {
-    console.warn("DomainCard received undefined domain");
+  if (!domain || !domain.name) {
+    console.warn("DomainCard received invalid domain:", domain);
     return null;
   }
 
-  const slug = `${domain.name || ""}${domain.tld || ""}`;
+  const slug = `${domain.name}${domain.tld || ''}`;
   const isMakeOffer = domain.price === null;
   const [favorited, setFavorited] = useState(false);
   const [, setRefresh] = useState(0);
@@ -37,9 +37,9 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
     setRefresh((r) => r + 1);
   }
 
-  // ✅ عرض آمن للاسم والامتداد
-  const domainName = domain.name || "???";
-  const domainTld = domain.tld || ".com";
+  // ✅ تنظيف البيانات
+  const domainName = domain.name.trim();
+  const domainTld = domain.tld?.trim() || '.com';
 
   return (
     <motion.div
@@ -79,15 +79,14 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
           </span>
         </div>
 
-        {/* ✅ DOMAIN NAME - عرض النطاق بشكل صحيح */}
+        {/* ✅ DOMAIN NAME - معكوس المشكلة: نعرض name.tld بدون مسافات */}
         <div className="mb-4 text-center">
-          <div className="flex items-baseline justify-center gap-1 flex-wrap">
+          <div className="flex items-baseline justify-center gap-0 flex-wrap">
+            {/* ✅ name + tld كقطعة واحدة متصلة */}
             <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
               {domainName}
+              <span className="text-[#4a9d93] font-light">{domainTld}</span>
             </h3>
-            <span className="domain-display text-2xl md:text-3xl text-[#4a9d93] font-light">
-              {domainTld}
-            </span>
           </div>
           {domain.arabicName && (
             <p className="mt-2 text-[#6b7572] text-sm">
