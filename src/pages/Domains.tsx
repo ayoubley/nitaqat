@@ -1,117 +1,283 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { toggleFavorite, isFavorite } from "../lib/favorites";
-import type { Domain } from "../lib/types";
+import { getCategories, getDomains } from "../lib/db";
+import DomainCard from "../components/DomainCard";
+import type { Domain, Category } from "../lib/types";
 
-interface Props {
-  domain: Domain;
-  index?: number;
-  showFavorite?: boolean;
-}
+const TLDs = [".com", ".net", ".org", ".io", ".co"];
+type SortOpt = "newest" | "price-asc" | "price-desc" | "popular";
 
-export default function DomainCard({ domain, index = 0, showFavorite = true }: Props) {
-  // ✅ حماية: إذا كان domain غير صالح، لا تعرض شيئاً
-  if (!domain || !domain.name || !domain.tld) {
-    return null;
-  }
+export default function Domains() {
+  const [params, setParams] = useSearchParams();
+  const [allDomains, setAllDomains] = useState<Domain[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const slug = `${domain.name}${domain.tld}`;
-  const isMakeOffer = domain.price === null;
-  const [favorited, setFavorited] = useState(false);
-  const [, setRefresh] = useState(0);
+  const [q, setQ] = useState(params.get("q") ?? "");
+  const [cat, setCat] = useState(params.get("cat") ?? "");
+  const [tld, setTld] = useState(params.get("tld") ?? "");
+  const [maxLen, setMaxLen] = useState<number>(Number(params.get("len")) || 12);
+  const [sort, setSort] = useState<SortOpt>((params.get("sort") as SortOpt) || "newest");
+
+  // ✅ تحميل البيانات من Supabase مع معالجة الأخطاء
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log("🔄 جاري تحميل البيانات...");
+        
+        const [domains, cats] = await Promise.all([
+          getDomains(),
+          getCategories()
+        ]);
+        
+        console.log("✅ تم تحميل النطاقات:", domains?.length || 0);
+        console.log("✅ تم تحميل الفئات:", cats?.length || 0);
+        
+        // ✅ التأكد من صحة البيانات
+        const safeDomains = (domains || []).filter(d => d && typeof d === 'object');
+        const safeCats = (cats || []).filter(c => c && typeof c === 'object');
+        
+        setAllDomains(safeDomains);
+        setCategories(safeCats);
+        
+        if (safeDomains.length === 0) {
+          console.warn("⚠️ لا توجد نطاقات في قاعدة البيانات");
+        }
+      } catch (err) {
+        console.error("❌ خطأ في تحميل البيانات:", err);
+        setError("فشل تحميل البيانات. يرجى تحديث الصفحة.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   useEffect(() => {
-    if (domain?.id) {
-      setFavorited(isFavorite(domain.id));
-    }
-  }, [domain]);
+    const next = new URLSearchParams();
+    if (q) next.set("q", q);
+    if (cat) next.set("cat", cat);
+    if (tld) next.set("tld", tld);
+    if (maxLen !== 12) next.set("len", String(maxLen));
+    if (sort !== "newest") next.set("sort", sort);
+    setParams(next, { replace: true });
+  }, [q, cat, tld, maxLen, sort, setParams]);
 
-  function handleToggleFav(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!domain?.id) return;
-    toggleFavorite(domain.id);
-    setFavorited(!favorited);
-    setRefresh((r) => r + 1);
+  const results = useMemo(() => {
+    if (!Array.isArray(allDomains) || allDomains.length === 0) return [];
+    
+    let list = [...allDomains];
+    
+    if (q) {
+      const needle = q.toLowerCase();
+      list = list.filter(
+        (d) => d && `${d.name || ""}${d.tld || ""}`.toLowerCase().includes(needle) || 
+        (d.arabicName && d.arabicName.includes(q))
+      );
+    }
+    if (cat && categories.length > 0) {
+      const c = categories.find((c) => c.slug === cat);
+      if (c) list = list.filter((d) => d && d.categoryId === c.id);
+    }
+    if (tld) list = list.filter((d) => d && d.tld === tld);
+    list = list.filter((d) => d && d.name && d.name.length <= maxLen);
+
+    switch (sort) {
+      case "price-asc":
+        list = [...list].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+        break;
+      case "price-desc":
+        list = [...list].sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
+        break;
+      case "popular":
+        list = [...list].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+        break;
+      default:
+        list = [...list].sort((a, b) => +new Date(b.createdAt || 0) - +new Date(a.createdAt || 0));
+    }
+    return list;
+  }, [allDomains, categories, q, cat, tld, maxLen, sort]);
+
+  function clearFilters() {
+    setQ(""); setCat(""); setTld(""); setMaxLen(12); setSort("newest");
+  }
+
+  // ✅ شاشة التحميل
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 py-12 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-[#4a9d93] border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-[#6b7572]">جاري تحميل النطاقات...</p>
+      </div>
+    );
+  }
+
+  // ✅ شاشة الخطأ
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 py-12 text-center">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-[#1a2422] mb-2">حدث خطأ</h2>
+        <p className="text-[#6b7572]">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 btn-cyan px-6 py-2 rounded-full text-sm"
+        >
+          إعادة التحميل
+        </button>
+      </div>
+    );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.5, delay: index * 0.05 }}
-    >
-      <Link
-        to={`/domain/${slug}`}
-        className="luxury-card relative block rounded-2xl p-6 overflow-hidden group h-full"
-      >
-        {showFavorite && (
-          <button
-            onClick={handleToggleFav}
-            className={`absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center transition z-10 ${
-              favorited 
-                ? "bg-gradient-to-br from-[#4a9d93] to-[#226962] text-white shadow-lg shadow-[#4a9d93]/30" 
-                : "bg-white border border-gray-200 text-gray-300 hover:text-[#a6553a] hover:border-[#a6553a]"
-            }`}
-            title={favorited ? "إزالة من المفضلة" : "إضافة للمفضلة"}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill={favorited ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-          </button>
-        )}
-
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-[10px] tracking-[0.25em] uppercase text-[#6b7572]">Premium Domain</span>
-          <span className="text-[10px] px-2.5 py-1 rounded-full border border-[#4a9d93]/50 text-[#4a9d93] bg-[#eaf4f1]">متاح</span>
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 py-12">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="text-[#4a9d93] text-xs tracking-[0.3em] uppercase mb-2 font-semibold">
+          The Catalogue
         </div>
+        <h1 className="text-4xl md:text-5xl font-black text-[#1a2422] section-title-line">جميع النطاقات</h1>
+        <p className="mt-4 text-[#6b7572] max-w-xl">
+          استكشف مجموعتنا الكاملة من النطاقات العربية الفاخرة. استخدم الفلاتر لتجد ما يناسب رؤيتك.
+        </p>
+      </motion.div>
 
-        <div className="mb-4 text-center">
-          <div className="flex items-baseline justify-center gap-1 flex-wrap">
-            <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
-              {domain.name}
-            </h3>
-            <span className="domain-display text-2xl md:text-3xl text-[#4a9d93] font-light">
-              {domain.tld}
-            </span>
+      <div className="mt-10 grid lg:grid-cols-[280px_1fr] gap-8">
+        {/* Sidebar */}
+        <aside className="space-y-6">
+          <div className="luxury-card rounded-2xl p-5">
+            <label className="text-xs uppercase tracking-widest text-[#6b7572]">بحث</label>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="اسم النطاق..."
+              className="mt-2 w-full bg-[#fbfaf6] border border-[#e4dfd2] rounded-lg px-3 py-2.5 outline-none focus:border-[#4a9d93] focus:shadow-[0_0_0_3px_rgba(74,157,147,0.15)] text-[#1a2422]"
+            />
           </div>
-          {domain.arabicName && (
-            <p className="mt-2 text-[#6b7572] text-sm">{domain.arabicName}</p>
+
+          <div className="luxury-card rounded-2xl p-5">
+            <div className="text-xs uppercase tracking-widest text-[#6b7572] mb-3">الفئة</div>
+            <div className="space-y-2">
+              <button
+                onClick={() => setCat("")}
+                className={`w-full text-right px-3 py-2 rounded-lg text-sm transition ${
+                  !cat ? "bg-[#4a9d93]/10 text-[#226962] border border-[#4a9d93]/30 font-semibold" : "text-[#6b7572] hover:bg-[#f6f4ee]"
+                }`}
+              >
+                الكل
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCat(c.slug)}
+                  className={`w-full text-right px-3 py-2 rounded-lg text-sm transition ${
+                    cat === c.slug
+                      ? "bg-[#4a9d93]/10 text-[#226962] border border-[#4a9d93]/30 font-semibold"
+                      : "text-[#6b7572] hover:bg-[#f6f4ee]"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="luxury-card rounded-2xl p-5">
+            <div className="text-xs uppercase tracking-widest text-[#6b7572] mb-3">الامتداد (TLD)</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setTld("")}
+                className={`px-3 py-1.5 rounded-full text-xs border ${
+                  !tld ? "border-[#4a9d93]/50 text-[#226962] bg-[#4a9d93]/5 font-semibold" : "border-[#e4dfd2] text-[#6b7572]"
+                }`}
+              >
+                الكل
+              </button>
+              {TLDs.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTld(t === tld ? "" : t)}
+                  className={`px-3 py-1.5 rounded-full text-xs border ${
+                    tld === t ? "border-[#4a9d93]/50 text-[#226962] bg-[#4a9d93]/5 font-semibold" : "border-[#e4dfd2] text-[#6b7572] hover:border-[#4a9d93]"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="luxury-card rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs uppercase tracking-widest text-[#6b7572]">الطول الأقصى</div>
+              <div className="text-[#226962] font-bold text-sm">{maxLen} حرف</div>
+            </div>
+            <input
+              type="range"
+              min={3}
+              max={12}
+              value={maxLen}
+              onChange={(e) => setMaxLen(Number(e.target.value))}
+              className="w-full accent-[#4a9d93]"
+            />
+          </div>
+
+          <button
+            onClick={clearFilters}
+            className="w-full btn-ghost py-2.5 rounded-lg text-sm"
+          >
+            مسح الفلاتر
+          </button>
+        </aside>
+
+        {/* Results */}
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-sm text-[#6b7572]">
+              <span className="text-[#1a2422] font-bold">{results.length}</span> نطاق متاح
+            </div>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOpt)}
+              className="bg-[#fbfaf6] border border-[#e4dfd2] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#4a9d93] text-[#1a2422]"
+            >
+              <option value="newest">الأحدث</option>
+              <option value="price-asc">السعر: من الأقل</option>
+              <option value="price-desc">السعر: من الأعلى</option>
+              <option value="popular">الأكثر مشاهدة</option>
+            </select>
+          </div>
+
+          {results.length === 0 ? (
+            <div className="luxury-card rounded-2xl p-12 text-center">
+              <div className="text-4xl mb-3">✦</div>
+              <p className="text-[#6b7572]">
+                {allDomains.length === 0 ? "لا توجد نطاقات في قاعدة البيانات بعد." : "لا توجد نطاقات تطابق الفلاتر الحالية."}
+              </p>
+              {allDomains.length === 0 && (
+                <Link to="/admin" className="mt-4 btn-cyan inline-block px-5 py-2 rounded-lg text-sm">
+                  أضف نطاقات جديدة
+                </Link>
+              )}
+              {allDomains.length > 0 && (
+                <button onClick={clearFilters} className="mt-4 btn-ghost px-5 py-2 rounded-lg text-sm">
+                  إعادة الضبط
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              {results.map((d, i) => (
+                <DomainCard key={d.id} domain={d} index={i} />
+              ))}
+            </div>
           )}
         </div>
-
-        <p className="text-[#6b7572] text-sm leading-6 line-clamp-2 mb-6 min-h-[3rem] text-center">
-          {domain.description || "نطاق مميز في سوق النطاقات العربية الفاخرة"}
-        </p>
-
-        <div className="flex items-center justify-between pt-4 border-t border-[#e4dfd2]">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#6b7572] mb-1">السعر</div>
-            {isMakeOffer ? (
-              <div className="text-[#4a9d93] font-bold text-sm">قدّم عرضك</div>
-            ) : (
-              <div className="text-[#1a2422] font-black text-xl">
-                ${(domain.price ?? 0).toLocaleString("en-US")}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-[#6b7572]">
-            <span className="inline-flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              {(domain.views ?? 0).toLocaleString("ar-EG")}
-            </span>
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-          <div className="absolute -inset-x-10 -top-10 h-40 shimmer" />
-        </div>
-      </Link>
-    </motion.div>
+      </div>
+    </div>
   );
 }
