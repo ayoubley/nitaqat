@@ -12,6 +12,7 @@ import {
 } from "../lib/db";
 import type { Domain, Offer, OfferStatus, Category } from "../lib/types";
 import Modal from "../components/Modal";
+import ImageUpload from "../components/ImageUpload";
 
 const ADMIN_PASS = import.meta.env.VITE_ADMIN_PASSWORD;
 const STORAGE_AUTH = "nitaqat:admin:auth";
@@ -356,6 +357,7 @@ function DomainForm({ initial, onDone }: { initial: Domain | null; onDone: () =>
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [status, setStatus] = useState<Domain["status"]>(initial?.status ?? "AVAILABLE");
   const [featured, setFeatured] = useState(initial?.featured ?? false);
+  const [imageUrl, setImageUrl] = useState(initial?.image_url || "");
 
   useEffect(() => {
     getCategories().then((c) => {
@@ -375,6 +377,7 @@ function DomainForm({ initial, onDone }: { initial: Domain | null; onDone: () =>
       status,
       categoryId,
       featured,
+      image_url: imageUrl || null,
     };
     
     console.log("📤 البيانات المرسلة:", data);
@@ -457,6 +460,14 @@ function DomainForm({ initial, onDone }: { initial: Domain | null; onDone: () =>
           />
         )}
       </div>
+      
+      {/* ✅ حقل رفع الصورة */}
+      <ImageUpload
+        domainId={initial?.id || "new"}
+        currentImageUrl={imageUrl}
+        onImageUploaded={(url) => setImageUrl(url)}
+      />
+      
       <label className="flex items-center gap-2 text-sm text-[#6b7572]">
         <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="accent-[#4a9d93]" />
         عرض كنطاق مميّز في الصفحة الرئيسية

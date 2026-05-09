@@ -11,11 +11,7 @@ interface Props {
 }
 
 export default function DomainCard({ domain, index = 0, showFavorite = true }: Props) {
-  // ✅ التحقق من وجود domain
-  if (!domain || !domain.name) {
-    console.warn("DomainCard received invalid domain:", domain);
-    return null;
-  }
+  if (!domain || !domain.name) return null;
 
   const slug = `${domain.name}${domain.tld || ''}`;
   const isMakeOffer = domain.price === null;
@@ -23,9 +19,7 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
-    if (domain?.id) {
-      setFavorited(isFavorite(domain.id));
-    }
+    if (domain?.id) setFavorited(isFavorite(domain.id));
   }, [domain]);
 
   function handleToggleFav(e: React.MouseEvent) {
@@ -37,7 +31,6 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
     setRefresh((r) => r + 1);
   }
 
-  // ✅ تنظيف البيانات
   const domainName = domain.name.trim();
   const domainTld = domain.tld?.trim() || '.com';
 
@@ -50,7 +43,7 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
     >
       <Link
         to={`/domain/${slug}`}
-        className="luxury-card relative block rounded-2xl p-6 overflow-hidden group h-full"
+        className="luxury-card relative block rounded-2xl p-6 overflow-hidden group h-full transition-all duration-300 hover:shadow-2xl"
       >
         {/* Favorite button */}
         {showFavorite && (
@@ -69,41 +62,51 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
           </button>
         )}
 
+        {/* ✅ عرض الصورة إذا وجدت */}
+        {domain.image_url && (
+          <div className="mb-4 -mt-2 rounded-xl overflow-hidden h-32 bg-[#f6f4ee]">
+            <img 
+              src={domain.image_url} 
+              alt={domain.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+        )}
+
         {/* status pill */}
         <div className="flex items-center justify-between mb-6">
-          <span className="text-[10px] tracking-[0.25em] uppercase text-[#6b7572]">
+          <span className="text-[10px] tracking-[0.25em] uppercase text-[#6b7572] font-semibold">
             Premium Domain
           </span>
-          <span className="text-[10px] px-2.5 py-1 rounded-full border border-[#4a9d93]/50 text-[#4a9d93] bg-[#eaf4f1]">
+          <span className="text-[10px] px-2.5 py-1 rounded-full border border-[#4a9d93]/50 text-[#4a9d93] bg-[#eaf4f1] font-medium">
             متاح
           </span>
         </div>
 
-        {/* ✅ DOMAIN NAME - معكوس المشكلة: نعرض name.tld بدون مسافات */}
+        {/* DOMAIN NAME - خط قوي واحترافي */}
         <div className="mb-4 text-center">
           <div className="flex items-baseline justify-center gap-0 flex-wrap">
-            {/* ✅ name + tld كقطعة واحدة متصلة */}
-            <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
+            <h3 className="text-4xl md:text-5xl font-black text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-300 tracking-tight">
               {domainName}
-              <span className="text-[#4a9d93] font-light">{domainTld}</span>
+              <span className="text-[#4a9d93] font-bold">{domainTld}</span>
             </h3>
           </div>
           {domain.arabicName && (
-            <p className="mt-2 text-[#6b7572] text-sm">
+            <p className="mt-2 text-[#6b7572] text-sm font-medium">
               {domain.arabicName}
             </p>
           )}
         </div>
 
         {/* description */}
-        <p className="text-[#6b7572] text-sm leading-6 line-clamp-2 mb-6 min-h-[3rem] text-center">
+        <p className="text-[#6b7572] text-sm leading-relaxed line-clamp-2 mb-6 min-h-[3rem] text-center">
           {domain.description || "نطاق مميز في سوق النطاقات العربية الفاخرة"}
         </p>
 
         {/* footer */}
         <div className="flex items-center justify-between pt-4 border-t border-[#e4dfd2]">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#6b7572] mb-1">
+            <div className="text-[10px] uppercase tracking-widest text-[#6b7572] mb-1 font-semibold">
               السعر
             </div>
             {isMakeOffer ? (

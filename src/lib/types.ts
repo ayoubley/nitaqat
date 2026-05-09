@@ -34,3 +34,7 @@ export interface Offer {
   // أضف هذا السطر الجديد 👇
   domain?: { name: string }; 
 }
+export interface Domain {
+  // ... existing fields
+  image_url?: string;
+}
