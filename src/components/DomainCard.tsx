@@ -66,7 +66,7 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
           </span>
         </div>
 
-        {/* ✅ FIXED: domain name - now shows correctly as "name.tld" */}
+        {/* ✅ DOMAIN NAME - FIXED: عرض النطاق بشكل صحيح name.tld */}
         <div className="mb-4 text-center">
           <div className="flex items-baseline justify-center gap-1 flex-wrap">
             <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
