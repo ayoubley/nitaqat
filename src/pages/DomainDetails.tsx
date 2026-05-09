@@ -1,43 +1,80 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   SITE_CONFIG,
   createOffer,
   getCategories,
-  getDomainBySlug,
   getDomains,
   incrementViews,
 } from "../lib/db";
-import { isFavorite, toggleFavorite } from "../lib/favorites";
 import Modal from "../components/Modal";
 import DomainCard from "../components/DomainCard";
+import { toggleFavorite, isFavorite } from "../lib/favorites";
+import type { Domain, Category } from "../lib/types";
 
 export default function DomainDetails() {
   const { slug = "" } = useParams();
-  const domain = useMemo(() => getDomainBySlug(slug), [slug]);
-  const categories = useMemo(() => getCategories(), []);
-  const allDomains = useMemo(() => getDomains(), []);
+  const [domain, setDomain] = useState<Domain | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [allDomains, setAllDomains] = useState<Domain[]>([]);
+  const [loading, setLoading] = useState(true);
   const [openOffer, setOpenOffer] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [offerAmount, setOfferAmount] = useState("");
-  const [fav, setFav] = useState(domain ? isFavorite(domain.id) : false);
+  const [favorited, setFavorited] = useState(false);
 
   useEffect(() => {
-    if (slug) incrementViews(slug);
+    async function load() {
+      try {
+        setLoading(true);
+        const [cats, domains] = await Promise.all([
+          getCategories(),
+          getDomains(),
+        ]);
+
+        // البحث عن النطاق بمقارنة name+tld مع slug
+        const d = domains.find((dom) => `${dom.name}${dom.tld}` === slug) || null;
+        setDomain(d);
+        setCategories(cats || []);
+        setAllDomains(domains || []);
+        
+        if (d) {
+          incrementViews(d.id);
+          setFavorited(isFavorite(d.id));
+        }
+      } catch (err) {
+        console.error("❌ خطأ في تحميل النطاق:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [slug]);
 
-  useEffect(() => {
-    if (domain) setFav(isFavorite(domain.id));
-  }, [domain]);
+  function handleToggleFav() {
+    if (!domain) return;
+    toggleFavorite(domain.id);
+    setFavorited(!favorited);
+  }
 
+  // شاشة التحميل
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-5 py-32 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-[#4a9d93] border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-[#6b7572]">جاري تحميل النطاق...</p>
+      </div>
+    );
+  }
+
+  // النطاق غير موجود
   if (!domain) {
     return (
       <div className="max-w-2xl mx-auto px-5 py-32 text-center">
         <div className="text-5xl mb-4">✦</div>
         <h1 className="text-3xl font-black text-[#1a2422]">النطاق غير موجود</h1>
         <p className="text-[#6b7572] mt-3">النطاق الذي تبحث عنه غير متوفر أو تمت إزالته.</p>
-        <Link to="/domains" className="btn-cyan inline-block mt-6 px-6 py-3 rounded-full text-sm">
+        <Link to="/domains" className="inline-block mt-6 px-6 py-3 bg-[#4a9d93] text-white rounded-full text-sm hover:bg-[#226962] transition">
           عرض كل النطاقات
         </Link>
       </div>
@@ -57,18 +94,6 @@ export default function DomainDetails() {
   const related = allDomains
     .filter((d) => d.id !== domain.id && d.categoryId === domain.categoryId && d.status === "AVAILABLE")
     .slice(0, 3);
-
-  function handleFavorite() {
-    if (!domain) return;
-    const next = toggleFavorite(domain.id);
-    setFav(next);
-    window.dispatchEvent(new Event("storage"));
-  }
-
-  function handleInlineOffer(e: React.FormEvent) {
-    e.preventDefault();
-    setOpenOffer(true);
-  }
 
   return (
     <div>
@@ -114,7 +139,7 @@ export default function DomainDetails() {
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[260px_1fr_320px]" dir="ltr">
-            {/* ✅ تم تعديل هذا القسم - إزالة صورة الشخص واستبدالها بمحتوى نصي */}
+            {/* القسم الأول - استشارة مجانية (بدون صورة) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -143,6 +168,7 @@ export default function DomainDetails() {
               </div>
             </motion.div>
 
+            {/* القسم الأوسط - معلومات النطاق */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -175,6 +201,7 @@ export default function DomainDetails() {
               </div>
             </motion.div>
 
+            {/* القسم الثالث - الأسعار والعروض */}
             <motion.aside
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -202,21 +229,17 @@ export default function DomainDetails() {
                   </button>
                 </div>
 
-                <form onSubmit={handleInlineOffer} className="rounded-2xl bg-gradient-to-br from-[#fbfaf6] to-[#eaf4f1] p-4 border border-[#e4dfd2]">
+                <div className="rounded-2xl bg-gradient-to-br from-[#fbfaf6] to-[#eaf4f1] p-4 border border-[#e4dfd2]">
                   <p className="text-xs font-bold text-[#6b7572]">قدّم عرضك</p>
-                  <input
-                    value={offerAmount}
-                    onChange={(e) => setOfferAmount(e.target.value)}
-                    inputMode="numeric"
-                    placeholder="USD"
-                    className="mt-5 w-full rounded-xl border border-[#e4dfd2] bg-white px-3 py-2 text-xs text-[#1a2422] outline-none placeholder:text-[#6b7572] focus:border-[#2f8279]"
-                  />
-                  <button className="mt-4 text-sm font-black text-[#2f8279] hover:text-[#18524d]">متابعة ↗</button>
-                </form>
+                  <button onClick={() => setOpenOffer(true)} className="mt-5 text-sm font-black text-[#2f8279] hover:text-[#18524d]">
+                    قدّم عرضاً ↗
+                  </button>
+                </div>
               </div>
             </motion.aside>
           </div>
 
+          {/* المميزات */}
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { title: "شراء بثقة", desc: "حماية المشتري عبر Escrow.com", icon: <CartIcon /> },
@@ -241,6 +264,7 @@ export default function DomainDetails() {
             ))}
           </div>
 
+          {/* تقييمات */}
           <div className="mt-10 overflow-hidden rounded-2xl bg-[#fbfaf6] p-5 ring-1 ring-[#e4dfd2] shadow-lg shadow-[#1a2422]/5">
             <div className="grid gap-5 lg:grid-cols-[170px_1fr]">
               <div className="flex flex-col justify-center rounded-xl bg-[#eaf4f1] p-5 text-center ring-1 ring-[#dceeea]">
@@ -266,90 +290,19 @@ export default function DomainDetails() {
         </div>
       </section>
 
-      {/* ===== LOWER SECTION — Warm Editorial Light ===== */}
-      <section className="relative overflow-hidden py-16">
-        <div className="absolute -top-40 left-1/2 h-[420px] w-[900px] -translate-x-1/2 rounded-full bg-[#4a9d93]/8 blur-[120px]" />
-        <div className="relative max-w-7xl mx-auto px-5 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="luxury-card rounded-3xl p-7 md:p-9"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <div className="text-[#4a9d93] text-xs tracking-[0.3em] uppercase mb-2 font-semibold">Domain Intelligence</div>
-                  <h2 className="text-3xl font-black text-[#1a2422]">لماذا {fullDomain}؟</h2>
-                </div>
-                <button
-                  onClick={handleFavorite}
-                  className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
-                    fav ? "border-[#a6553a]/30 bg-[#a6553a]/10 text-[#a6553a]" : "border-[#e4dfd2] bg-[#fbfaf6] text-[#6b7572] hover:border-[#a6553a]/30 hover:text-[#a6553a]"
-                  }`}
-                >
-                  {fav ? "محفوظ في المفضلة ❤️" : "أضف للمفضلة ♡"}
-                </button>
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {[
-                  { l: "الطول", v: `${domain.name.length} أحرف`, d: "اسم قصير وسهل الحفظ" },
-                  { l: "الامتداد", v: domain.tld, d: "امتداد موثوق للعلامات الجادة" },
-                  { l: "المشاهدات", v: domain.views.toLocaleString("ar-EG"), d: "اهتمام نشط من المشترين" },
-                  { l: "الحالة", v: "متاح الآن", d: "جاهز للتفاوض والنقل" },
-                ].map((item) => (
-                  <div key={item.l} className="rounded-2xl bg-[#efece3]/50 p-5 ring-1 ring-[#e4dfd2]">
-                    <p className="text-xs uppercase tracking-widest text-[#6b7572]">{item.l}</p>
-                    <p className="mt-2 text-2xl font-black text-[#1a2422]">{item.v}</p>
-                    <p className="mt-1 text-sm text-[#6b7572]">{item.d}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="rounded-3xl bg-gradient-to-br from-[#2f8279] via-[#226962] to-[#18524d] p-7 text-white shadow-2xl shadow-[#2f8279]/20 md:p-9"
-            >
-              <div className="text-[#4a9d93] text-xs tracking-[0.3em] uppercase mb-2 font-semibold">Secure Closing</div>
-              <h2 className="text-3xl font-black">مسار شراء آمن</h2>
-              <div className="mt-8 space-y-5">
-                {[
-                  "قدّم عرضك أو اطلب التواصل الفوري عبر واتساب.",
-                  "نؤكد الاتفاق ونفتح معاملة ضمان Escrow.com.",
-                  "بعد الدفع، يتم نقل النطاق لحسابك مع متابعة كاملة.",
-                ].map((step, i) => (
-                  <div key={step} className="flex gap-4">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4a9d93] to-[#2f8279] text-sm font-black text-white">
-                      {i + 1}
-                    </div>
-                    <p className="pt-1 text-sm leading-7 text-white/75">{step}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-8 rounded-2xl border border-[#4a9d93]/30 bg-[#4a9d93]/15 p-5">
-                <p className="font-black text-[#4a9d93]">Secure transactions via Escrow.com</p>
-                <p className="mt-2 text-sm leading-7 text-white/65">حماية كاملة للمشتري والبائع، وشفافية في الدفع ونقل الملكية.</p>
-              </div>
-            </motion.div>
+      {/* القسم السفلي - نطاقات مشابهة */}
+      {related.length > 0 && (
+        <section className="py-16 max-w-7xl mx-auto px-5 lg:px-8">
+          <h2 className="text-2xl font-black text-[#1a2422] section-title-line mb-8">نطاقات مشابهة</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {related.map((d, i) => (
+              <DomainCard key={d.id} domain={d} index={i} />
+            ))}
           </div>
+        </section>
+      )}
 
-          {related.length > 0 && (
-            <section className="mt-16">
-              <h2 className="text-2xl font-black text-[#1a2422] section-title-line mb-8">نطاقات مشابهة</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {related.map((d, i) => (
-                  <DomainCard key={d.id} domain={d} index={i} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </section>
-
+      {/* Modal */}
       <Modal
         open={openOffer}
         onClose={() => {
@@ -367,14 +320,14 @@ export default function DomainDetails() {
               شكراً لاهتمامك! سيقوم فريقنا بمراجعة عرضك والرد عليك خلال
               <span className="text-[#226962] font-bold"> 24 ساعة</span> على البريد المسجل.
             </p>
-            <button onClick={() => setOpenOffer(false)} className="btn-cyan mt-6 px-6 py-2.5 rounded-full text-sm">
+            <button onClick={() => setOpenOffer(false)} className="mt-6 px-6 py-2.5 rounded-full text-sm bg-[#4a9d93] text-white hover:bg-[#226962] transition">
               إغلاق
             </button>
           </div>
         ) : (
           <OfferForm
             domainId={domain.id}
-            suggestedAmount={offerAmount ? Number(offerAmount) : domain.price ?? undefined}
+            suggestedAmount={domain.price ?? undefined}
             onSubmitted={() => setSubmitted(true)}
           />
         )}
@@ -382,6 +335,8 @@ export default function DomainDetails() {
     </div>
   );
 }
+
+// ============= COMPONENTS =============
 
 function OfferForm({
   domainId,
@@ -399,12 +354,12 @@ function OfferForm({
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !email || !amount) return;
     setSubmitting(true);
-    setTimeout(() => {
-      createOffer({
+    try {
+      await createOffer({
         domainId,
         buyerName: name,
         email,
@@ -412,9 +367,12 @@ function OfferForm({
         offerAmount: Number(amount),
         message,
       });
-      setSubmitting(false);
       onSubmitted();
-    }, 600);
+    } catch (err) {
+      console.error("❌ خطأ في إرسال العرض:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -447,7 +405,7 @@ function OfferForm({
           placeholder="حدثنا عن مشروعك..."
         />
       </Field>
-      <button type="submit" disabled={submitting} className="btn-cyan w-full py-3.5 rounded-xl text-sm disabled:opacity-60">
+      <button type="submit" disabled={submitting} className="w-full py-3.5 rounded-xl text-sm bg-[#4a9d93] text-white font-semibold hover:bg-[#226962] transition disabled:opacity-60">
         {submitting ? "جار الإرسال..." : "إرسال العرض"}
       </button>
       <p className="text-xs text-[#6b7572] text-center">بإرسال هذا النموذج، أنت توافق على شروط الاستخدام وسياسة الخصوصية.</p>
