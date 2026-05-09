@@ -11,18 +11,26 @@ interface Props {
 }
 
 export default function DomainCard({ domain, index = 0, showFavorite = true }: Props) {
+  // ✅ حماية: إذا كان domain غير صالح، لا تعرض شيئاً
+  if (!domain || !domain.name || !domain.tld) {
+    return null;
+  }
+
   const slug = `${domain.name}${domain.tld}`;
   const isMakeOffer = domain.price === null;
   const [favorited, setFavorited] = useState(false);
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
-    setFavorited(isFavorite(domain.id));
-  }, [domain.id]);
+    if (domain?.id) {
+      setFavorited(isFavorite(domain.id));
+    }
+  }, [domain]);
 
   function handleToggleFav(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!domain?.id) return;
     toggleFavorite(domain.id);
     setFavorited(!favorited);
     setRefresh((r) => r + 1);
@@ -39,7 +47,6 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
         to={`/domain/${slug}`}
         className="luxury-card relative block rounded-2xl p-6 overflow-hidden group h-full"
       >
-        {/* Favorite button */}
         {showFavorite && (
           <button
             onClick={handleToggleFav}
@@ -56,17 +63,11 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
           </button>
         )}
 
-        {/* status pill */}
         <div className="flex items-center justify-between mb-6">
-          <span className="text-[10px] tracking-[0.25em] uppercase text-[#6b7572]">
-            Premium Domain
-          </span>
-          <span className="text-[10px] px-2.5 py-1 rounded-full border border-[#4a9d93]/50 text-[#4a9d93] bg-[#eaf4f1]">
-            متاح
-          </span>
+          <span className="text-[10px] tracking-[0.25em] uppercase text-[#6b7572]">Premium Domain</span>
+          <span className="text-[10px] px-2.5 py-1 rounded-full border border-[#4a9d93]/50 text-[#4a9d93] bg-[#eaf4f1]">متاح</span>
         </div>
 
-        {/* ✅ DOMAIN NAME - FIXED: عرض النطاق بشكل صحيح name.tld */}
         <div className="mb-4 text-center">
           <div className="flex items-baseline justify-center gap-1 flex-wrap">
             <h3 className="domain-display text-4xl md:text-5xl font-bold text-[#1a2422] group-hover:text-[#4a9d93] transition-colors duration-500">
@@ -77,23 +78,17 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
             </span>
           </div>
           {domain.arabicName && (
-            <p className="mt-2 text-[#6b7572] text-sm">
-              {domain.arabicName}
-            </p>
+            <p className="mt-2 text-[#6b7572] text-sm">{domain.arabicName}</p>
           )}
         </div>
 
-        {/* description */}
         <p className="text-[#6b7572] text-sm leading-6 line-clamp-2 mb-6 min-h-[3rem] text-center">
           {domain.description || "نطاق مميز في سوق النطاقات العربية الفاخرة"}
         </p>
 
-        {/* footer */}
         <div className="flex items-center justify-between pt-4 border-t border-[#e4dfd2]">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#6b7572] mb-1">
-              السعر
-            </div>
+            <div className="text-[10px] uppercase tracking-widest text-[#6b7572] mb-1">السعر</div>
             {isMakeOffer ? (
               <div className="text-[#4a9d93] font-bold text-sm">قدّم عرضك</div>
             ) : (
@@ -108,12 +103,11 @@ export default function DomainCard({ domain, index = 0, showFavorite = true }: P
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
-              {domain.views.toLocaleString("ar-EG")}
+              {(domain.views ?? 0).toLocaleString("ar-EG")}
             </span>
           </div>
         </div>
 
-        {/* hover shimmer */}
         <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
           <div className="absolute -inset-x-10 -top-10 h-40 shimmer" />
         </div>
