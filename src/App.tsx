@@ -1,4 +1,4 @@
-import { HashRouter, Route, Routes, useLocation, Navigate } from "react-router-dom";
+import { HashRouter, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -18,18 +18,23 @@ function ScrollToTop() {
   return null;
 }
 
-// مكون يكتشف الدومين الوارد ويعيد توجيهه
+// مكون يكتشف الدومين الوارد ويعيد توجيهه (مع تحسين لمنع الحلقات)
 function DomainRedirect() {
-  const hostname = window.location.hostname; // مثال: sara.com
-  const isMainDomain = hostname === "nitaqat.vercel.app" || hostname === "localhost" || hostname === "nitaqat.com";
+  const { pathname, hash } = useLocation();
+  const hostname = window.location.hostname;
+  
+  // النطاقات الرئيسية المقبولة
+  const mainDomains = ["nitaqat.vercel.app", "nitaqat-brown.vercel.app", "localhost", "nitaqat.com"];
+  const isMainDomain = mainDomains.includes(hostname);
   
   useEffect(() => {
-    if (!isMainDomain) {
-      // استخرج اسم الدومين من hostname (sara.com → sara)
+    // إذا كان الدومين ليس رئيسياً ولم يتم التوجيه مسبقاً
+    if (!isMainDomain && !hash.includes("/domain/")) {
       const domainSlug = hostname.replace(/^www\./, "");
+      // استخدام replace بدلاً من تعيين مباشر لتجنب إعادة التحميل
       window.location.hash = `#/domain/${domainSlug}`;
     }
-  }, [hostname, isMainDomain]);
+  }, [hostname, isMainDomain, hash]);
 
   return null;
 }
@@ -62,8 +67,11 @@ export default function App() {
 function NotFound() {
   return (
     <div className="max-w-xl mx-auto px-5 py-32 text-center">
-      <div className="cyan-text text-7xl font-black">404</div>
-      <p className="mt-3 text-gray-500">الصفحة المطلوبة غير موجودة.</p>
+      <div className="gold-text text-7xl font-black">404</div>
+      <p className="mt-3 text-[#6b7572]">الصفحة المطلوبة غير موجودة.</p>
+      <a href="/" className="inline-block mt-6 px-6 py-3 bg-[#4a9d93] text-white rounded-full text-sm hover:bg-[#226962] transition">
+        العودة إلى الرئيسية
+      </a>
     </div>
   );
 }
