@@ -21,28 +21,28 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-gray-100">
+    <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#fbfaf6]/80 border-b border-[#e4dfd2]">
       <div className="max-w-7xl mx-auto px-5 lg:px-8 h-18 py-4 flex items-center justify-between gap-6">
         <Link to="/" className="flex items-center gap-3 group">
           <motion.div
             initial={{ rotate: -8, scale: 0.9 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
-            className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#91eff2] to-[#5bc9cc] shadow-lg shadow-[#91eff2]/30"
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#4a9d93] to-[#226962] shadow-lg shadow-[#4a9d93]/30"
           >
             <span className="font-black text-lg text-white">ن</span>
           </motion.div>
           <div className="leading-tight">
-            <div className="font-black text-xl tracking-tight text-[#0a1a3a]">
+            <div className="font-black text-xl tracking-tight text-[#1a2422]">
               {SITE_CONFIG.brandName}
             </div>
-            <div className="text-[10px] tracking-[0.3em] text-gray-400 uppercase">
+            <div className="text-[10px] tracking-[0.3em] text-[#6b7572] uppercase">
               Premium Domains
             </div>
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full px-2 py-1.5">
+        <nav className="hidden md:flex items-center gap-1 bg-[#f6f4ee] border border-[#e4dfd2] rounded-full px-2 py-1.5">
           {links.map((l) => (
             <NavLink
               key={l.to}
@@ -51,14 +51,14 @@ export default function Navbar() {
               className={({ isActive }) =>
                 `px-4 py-1.5 text-sm rounded-full transition-all flex items-center gap-1.5 ${
                   isActive
-                    ? "bg-gradient-to-l from-[#91eff2]/20 to-[#91eff2]/10 text-[#2ab0b4] border border-[#91eff2]/40 font-semibold"
-                    : "text-gray-500 hover:text-[#0a1a3a]"
+                    ? "bg-gradient-to-l from-[#4a9d93]/20 to-[#4a9d93]/10 text-[#226962] border border-[#4a9d93]/40 font-semibold"
+                    : "text-[#6b7572] hover:text-[#1a2422]"
                 }`
               }
             >
               {l.label}
               {l.badge && (
-                <span className="ml-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center text-[10px] font-bold bg-gradient-to-br from-[#91eff2] to-[#5bc9cc] text-white rounded-full">
+                <span className="ml-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center text-[10px] font-bold bg-gradient-to-br from-[#4a9d93] to-[#226962] text-white rounded-full">
                   {l.badge}
                 </span>
               )}
@@ -82,8 +82,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile nav */}
-      <div className="md:hidden border-t border-gray-100">
+      {/* Mobile nav - updated colors */}
+      <div className="md:hidden border-t border-[#e4dfd2]">
         <div className="max-w-7xl mx-auto px-5 flex justify-between overflow-x-auto">
           {links.map((l) => {
             const active = loc.pathname === l.to;
@@ -92,12 +92,12 @@ export default function Navbar() {
                 key={l.to}
                 to={l.to}
                 className={`px-3 py-2.5 text-xs whitespace-nowrap flex items-center gap-1 ${
-                  active ? "text-[#2ab0b4] font-bold" : "text-gray-400"
+                  active ? "text-[#226962] font-bold" : "text-[#6b7572]"
                 }`}
               >
                 {l.label}
                 {l.badge && (
-                  <span className="min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[9px] font-bold bg-gradient-to-br from-[#91eff2] to-[#5bc9cc] text-white rounded-full">
+                  <span className="min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[9px] font-bold bg-gradient-to-br from-[#4a9d93] to-[#226962] text-white rounded-full">
                     {l.badge}
                   </span>
                 )}
