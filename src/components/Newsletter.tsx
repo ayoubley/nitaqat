@@ -6,125 +6,89 @@ export default function Newsletter() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
-    
     setLoading(true);
-    
-    // ✅ هنا يمكنك إضافة منطق حفظ البريد الإلكتروني في Supabase
-    console.log("📧 Email submitted:", email);
-    
-    // محاكاة تأخير الإرسال
     setTimeout(() => {
-      setSubmitted(true);
       setLoading(false);
+      setSubmitted(true);
       setEmail("");
-      
-      // إعادة تعيين الرسالة بعد 3 ثوانٍ
-      setTimeout(() => setSubmitted(false), 3000);
-    }, 1000);
+    }, 800);
   }
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2f8279] via-[#226962] to-[#18524d] py-12 px-6 md:py-16 md:px-12 shadow-2xl shadow-[#2f8279]/20">
-      {/* Background decorative elements */}
-      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-[#4a9d93]/20 blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(74,157,147,0.1),transparent_70%)] pointer-events-none" />
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#f6f4ee] via-[#eaf4f1] to-[#f6f4ee] border-t border-b border-[#e4dfd2]">
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,rgba(74,157,147,0.08)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_bottom_left,rgba(74,157,147,0.06)_0%,transparent_70%)] pointer-events-none" />
 
-      <div className="relative z-10 max-w-3xl mx-auto text-center">
+      <div className="relative z-10 max-w-4xl mx-auto px-5 lg:px-8 py-20 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-6"
+          transition={{ duration: 0.6 }}
         >
-          <span className="w-2 h-2 rounded-full bg-[#d4a76a] animate-pulse" />
-          <span className="text-[10px] tracking-[0.3em] uppercase text-white/80 font-semibold">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4a9d93]/40 bg-[#4a9d93]/10 text-[#226962] text-xs tracking-widest mb-6 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-[#4a9d93] animate-pulse" />
             VIP Access
-          </span>
-        </motion.div>
+          </div>
 
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          viewport={{ once: true }}
-          className="text-3xl md:text-4xl font-black text-white mb-3"
-        >
-          انضم لقائمة النخبة
-        </motion.h2>
+          <h2 className="text-3xl md:text-5xl font-black text-[#1a2422] leading-tight">
+            انضم لقائمة <span className="gold-text">النخبة</span>
+          </h2>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          viewport={{ once: true }}
-          className="text-white/70 text-base md:text-lg leading-relaxed mb-8"
-        >
-          كن أول من يعلم عن النطاقات العربية الفاخرة والفرص الاستثمارية قبل طرحها للعامة.
-        </motion.p>
+          <p className="mt-4 text-[#6b7572] text-lg max-w-2xl mx-auto leading-8">
+            كن أول من يعلم عن النطاقات العربية الفاخرة والفرص الاستثمارية قبل طرحها للعامة.
+          </p>
 
-        {submitted ? (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white/15 rounded-2xl p-6 backdrop-blur-sm border border-white/20"
-          >
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#d4a76a]/30 flex items-center justify-center">
-                <svg className="w-6 h-6 text-[#d4a76a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-white font-semibold">تم الاشتراك بنجاح!</p>
-                <p className="text-white/60 text-sm">شكراً لانضمامك إلى قائمة النخبة</p>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.form
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            viewport={{ once: true }}
-            onSubmit={handleSubmit}
-            className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
-          >
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="البريد الإلكتروني"
-              required
-              className="flex-1 px-5 py-3 rounded-full bg-white text-[#1a2422] placeholder:text-[#6b7572] outline-none focus:ring-2 focus:ring-[#d4a76a] border-0"
-              dir="ltr"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-[#d4a76a] to-[#a6553a] text-white font-bold text-sm hover:brightness-105 transition-all disabled:opacity-60 shadow-lg shadow-[#d4a76a]/20"
+          {submitted ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-8 inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-[#eaf4f1] border border-[#4a9d93]/30 text-[#226962]"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-              ) : (
-                "اشتراك"
-              )}
-            </button>
-          </motion.form>
-        )}
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          viewport={{ once: true }}
-          className="text-white/40 text-xs mt-6"
-        >
-          تعدك بعدم إرسال رسائل مزعجة. يمكنك إلغاء الاشتراك في أي وقت.
-        </motion.p>
+              <div className="w-8 h-8 rounded-full bg-[#4a9d93]/20 flex items-center justify-center">
+                ✓
+              </div>
+              <div className="text-right">
+                <div className="font-bold">تم الاشتراك بنجاح!</div>
+                <div className="text-sm text-[#4a9d93]">شكراً لانضمامك لقائمة النخبة</div>
+              </div>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-8 max-w-lg mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="البريد الإلكتروني"
+                    className="w-full px-5 py-4 rounded-full bg-white border-2 border-[#e4dfd2] text-[#1a2422] placeholder:text-[#6b7572] outline-none focus:border-[#4a9d93] focus:shadow-[0_0_0_4px_rgba(74,157,147,0.15)] transition"
+                  />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6b7572]">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="4" width="20" height="16" rx="2"/>
+                      <path d="M22 6l-10 7L2 6"/>
+                    </svg>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-cyan px-8 py-4 rounded-full text-sm font-semibold whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loading ? "جارٍ..." : "اشتراك"}
+                </button>
+              </div>
+              <p className="mt-4 text-xs text-[#6b7572]">
+                نعدك بعدم إرسال رسائل مزعجة. يمكنك إلغاء الاشتراك في أي وقت.
+              </p>
+            </form>
+          )}
+        </motion.div>
       </div>
     </section>
   );
